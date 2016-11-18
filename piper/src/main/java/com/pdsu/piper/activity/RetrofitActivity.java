@@ -8,15 +8,17 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 /**
  * Retrofit && RxJava Test
@@ -40,27 +42,52 @@ public class RetrofitActivity extends AppCompatActivity
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .addConverterFactory(GsonConverterFactory.create())
+                // 添加RxJava支持
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
                 .build();
 
         MovieService movieService = retrofit.create(MovieService.class);
-        Call<MovieEntity> topMovieCall = movieService.getTopMovie(0, 10);
+        //        Call<MovieEntity> topMovieCall = movieService.getTopMovie(0, 10);
+        movieService.getTopMovie(0, 10)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Subscriber<MovieEntity>()
+                {
+                    @Override
+                    public void onCompleted()
+                    {
+                        Toast.makeText(RetrofitActivity.this, "Get Top Movie Completed", Toast.LENGTH_SHORT).show();
+                    }
 
-        topMovieCall.enqueue(new Callback<MovieEntity>()
-        {
-            //请求失败
-            @Override
-            public void onFailure(final Call<MovieEntity> call, final Throwable t)
-            {
-                mResultTV.setText(t.getMessage());
-            }
+                    @Override
+                    public void onError(final Throwable e)
+                    {
+                        mResultTV.setText(e.getMessage());
+                    }
 
-            //请求成功
-            @Override
-            public void onResponse(final Call<MovieEntity> call, final Response<MovieEntity> response)
-            {
-                mResultTV.setText(response.body().toString());
-            }
-        });
+                    @Override
+                    public void onNext(final MovieEntity movieEntity)
+                    {
+                        mResultTV.setText(movieEntity.toString());
+                    }
+                });
+
+        //        topMovieCall.enqueue(new Callback<MovieEntity>()
+        //        {
+        //            //请求失败
+        //            @Override
+        //            public void onFailure(final Call<MovieEntity> call, final Throwable t)
+        //            {
+        //                mResultTV.setText(t.getMessage());
+        //            }
+        //
+        //            //请求成功
+        //            @Override
+        //            public void onResponse(final Call<MovieEntity> call, final Response<MovieEntity> response)
+        //            {
+        //                mResultTV.setText(response.body().toString());
+        //            }
+        //        });
     }
 
     @OnClick(R.id.click_me_BN)
